@@ -113,10 +113,8 @@ class CSVModelReader(object):
                     return False, {column['name']: 'Validation failed'}
         return True, {}
 
-    validity_checks = [_is_valid_row_length, _is_valid_row_values]
-
     def validate_row(self, row):
-        for validity_check in self.validity_checks:
+        for validity_check in self.VALIDITY_CHECKS:
             valid, row_errors = validity_check(self, row)
             if not valid:
                 return False, row_errors
@@ -127,6 +125,13 @@ class CSVModelReader(object):
             not csv_row or len(csv_row) == 0 or
             (len(csv_row) == 1 and not csv_row[0].strip())
         )
+
+    def _wrap_row(self, csv_row):
+        obj = {}
+        for index, value in enumerate(csv_row):
+            value = value.strip() if self.strip_white_spaces else value
+            obj[self.model_fields[index]] = value
+        return obj
 
     def __next__(self):
         csv_row = next(self.reader)
@@ -153,12 +158,24 @@ class CSVModelReader(object):
                 self.row_counter += 1
                 return next(self)
 
-        obj = {}
-        for index, value in enumerate(csv_row):
-            value = value.strip() if self.strip_white_spaces else value
-            obj[self.model_fields[index]] = value
+        obj = self._wrap_row(csv_row)
 
         self.row_counter += 1
         return obj
 
     next = __next__
+    VALIDITY_CHECKS = [_is_valid_row_length, _is_valid_row_values]
+
+
+class CSVModelClassReader(CSVModelReader):
+
+    def __init__(self, csv_file, model_class, **kwargs):
+        self.model_class = model_class
+        super(CSVModelClassReader, self).__init__()
+
+    def _wrap_row(self, csv_row):
+        obj = self.model_class()
+        for index, value in enumerate(csv_row):
+            value = value.strip() if self.strip_white_spaces else value
+            setattr(obj, self.model_fields[index], value)
+        return obj
