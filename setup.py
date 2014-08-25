@@ -16,7 +16,8 @@ class PyTest(TestCommand):
 
     def run_tests(self):
         #import here, cause outside the eggs aren't loaded
-        import sys, pytest
+        import sys
+        import pytest
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
 
